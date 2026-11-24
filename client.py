@@ -113,15 +113,21 @@ class StalkerClient:
         self._setup()
 
     def _setup(self):
+        portal = self.cfg.get("portal_url", "")
+        if not portal:
+            return
         dev = self.cfg.get("device", "AuraHD9")
         self.s.headers.update({
             "User-Agent": self.UA,
             "X-User-Agent": f"Model: {dev}; Link: WiFi",
-            "Referer": f"{self.cfg['portal_url']}/c/",
+            "Referer": f"{portal}/c/",
             "Cache-Control": "no-cache",
         })
         mac = self.cfg.get("mac", "")
-        dom = self.cfg["portal_url"].split("//")[1].split("/")[0].split(":")[0]
+        try:
+            dom = portal.split("//")[1].split("/")[0].split(":")[0]
+        except IndexError:
+            dom = portal.split("/")[0].split(":")[0]
         self.s.cookies.clear()
         self.s.cookies.set("mac", mac, domain=dom)
         self.s.cookies.set("stb_lang", "en", domain=dom)
