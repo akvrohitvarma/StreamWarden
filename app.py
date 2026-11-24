@@ -319,6 +319,14 @@ def api_tv():
         return jsonify({"ok": False, "error": str(e)})
 
 
+def _vlc_play(vlc_path, url, title="Stream"):
+    args = [vlc_path, url, f"--meta-title={title}", "--no-video-title-show",
+            "--one-instance", "--playlist-enqueue"]
+    if platform.system() == "Darwin":
+        args.append("--started-from-file")
+    subprocess.Popen(args, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
+
+
 @app.route("/api/tv_play", methods=["POST"])
 def api_tv_play():
     cmd = req.json.get("cmd", "")
@@ -329,8 +337,7 @@ def api_tv_play():
             return jsonify({"ok": False, "error": "No stream URL"})
         vlc = config.get("vlc_path", "")
         if vlc and Path(vlc).exists():
-            subprocess.Popen([vlc, url, f"--meta-title={name}", "--no-video-title-show"],
-                             stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
+            _vlc_play(vlc, url, name)
             return jsonify({"ok": True, "url": url, "player": "vlc"})
         return jsonify({"ok": True, "url": url, "player": "none"})
     except Exception as e:
@@ -370,8 +377,7 @@ def api_play():
     name = req.json.get("name", "Stream")
     vlc = config.get("vlc_path", "")
     if vlc and Path(vlc).exists():
-        subprocess.Popen([vlc, url, f"--meta-title={name}", "--no-video-title-show"],
-                         stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
+        _vlc_play(vlc, url, name)
         return jsonify({"ok": True, "player": "vlc"})
     return jsonify({"ok": True, "player": "none", "url": url})
 
