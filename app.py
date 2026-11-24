@@ -320,9 +320,14 @@ def api_tv():
 
 
 def _vlc_play(vlc_path, url, title="Stream"):
-    args = [vlc_path, "--one-instance", url,
-            f"--meta-title={title}", "--no-video-title-show"]
-    subprocess.Popen(args, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
+    if platform.system() == "Darwin":
+        subprocess.Popen(["open", "-a", "VLC", "--args", url,
+                          f"--meta-title={title}", "--no-video-title-show"],
+                         stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
+    else:
+        subprocess.Popen([vlc_path, "--one-instance", url,
+                          f"--meta-title={title}", "--no-video-title-show"],
+                         stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
 
 
 @app.route("/api/tv_play", methods=["POST"])
