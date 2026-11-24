@@ -321,10 +321,7 @@ def api_tv():
 
 def _vlc_play(vlc_path, url, title="Stream"):
     if platform.system() == "Darwin":
-        subprocess.Popen(["open", "-a", "VLC", url],
-                         stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
-        subprocess.Popen(["osascript", "-e",
-                          f'tell application "VLC" to GetURL "{url}"'],
+        subprocess.Popen([vlc_path, url, f"--meta-title={title}", "--no-video-title-show"],
                          stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
     else:
         subprocess.Popen([vlc_path, "--one-instance", url,
