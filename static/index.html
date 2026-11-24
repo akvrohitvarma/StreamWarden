@@ -91,6 +91,9 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif;b
 .settings-form .folder-row .btn{flex-shrink:0;padding:8px 14px;font-size:12px}
 .settings-form .req-tag{display:inline-block;font-size:9px;color:#ff4d4d;font-weight:700;background:rgba(255,77,77,.12);padding:1px 5px;border-radius:3px;margin-left:6px;vertical-align:middle;letter-spacing:.3px}
 .settings-status{padding:4px 24px;font-size:12px}
+.config-io{display:flex;gap:10px;margin-top:16px;padding-top:14px;border-top:1px solid var(--border)}
+.config-io .btn{font-size:12px;padding:7px 16px}
+.config-io input[type="file"]{display:none}
 .empty{text-align:center;color:var(--dim);padding:60px 20px;font-size:14px}
 .ch-num{color:var(--accent);font-size:12px;font-weight:600;min-width:50px;text-align:right}
 .dl-size{color:var(--dim);font-size:11px;min-width:70px;text-align:right}
@@ -1018,6 +1021,14 @@ async function loadSettings() {
       <button class="btn btn-accent" onclick="saveSettings()">Save & Reconnect</button>
       <button class="btn btn-dim" onclick="loadSettings()">Reset</button>
     </div>
+
+    <div class="section-title">Configuration Transfer</div>
+    <div class="hint" style="margin-top:4px;line-height:1.5">Export your settings to share with others or back up between devices. Import a previously exported config file to restore settings.</div>
+    <div class="config-io">
+      <button class="btn btn-accent" onclick="exportConfig()">Export Config</button>
+      <button class="btn btn-dim" onclick="document.getElementById('import-file').click()">Import Config</button>
+      <input type="file" id="import-file" accept=".json" onchange="importConfig(this)">
+    </div>
   `;
 }
 
@@ -1047,6 +1058,44 @@ async function saveSettings() {
   await connect();
   $('#settings-status').textContent = 'Connected.';
   $('#settings-status').style.color = 'var(--success)';
+}
+
+function exportConfig() {
+  api('/api/config').then(r => {
+    if (!r.ok) return;
+    const blob = new Blob([JSON.stringify(r.config, null, 2)], {type: 'application/json'});
+    const a = document.createElement('a');
+    a.href = URL.createObjectURL(blob);
+    a.download = 'streamwarden-config.json';
+    a.click();
+    URL.revokeObjectURL(a.href);
+    $('#settings-status').textContent = 'Config exported.';
+    $('#settings-status').style.color = 'var(--success)';
+  });
+}
+
+function importConfig(input) {
+  const file = input.files[0];
+  if (!file) return;
+  const reader = new FileReader();
+  reader.onload = async function(e) {
+    try {
+      const cfg = JSON.parse(e.target.result);
+      if (typeof cfg !== 'object' || Array.isArray(cfg)) throw new Error('Invalid config');
+      await post('/api/config', cfg);
+      $('#settings-status').textContent = 'Config imported. Reconnecting...';
+      $('#settings-status').style.color = 'var(--warn)';
+      await loadSettings();
+      await connect();
+      $('#settings-status').textContent = 'Config imported and connected.';
+      $('#settings-status').style.color = 'var(--success)';
+    } catch (err) {
+      $('#settings-status').textContent = 'Import failed: ' + err.message;
+      $('#settings-status').style.color = 'var(--err)';
+    }
+    input.value = '';
+  };
+  reader.readAsText(file);
 }
 
 function esc(s) { const d = document.createElement('div'); d.textContent = s || ''; return d.innerHTML; }
