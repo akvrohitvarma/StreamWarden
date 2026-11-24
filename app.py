@@ -320,10 +320,8 @@ def api_tv():
 
 
 def _vlc_play(vlc_path, url, title="Stream"):
-    args = [vlc_path, url, f"--meta-title={title}", "--no-video-title-show",
-            "--one-instance", "--playlist-enqueue"]
-    if platform.system() == "Darwin":
-        args.append("--started-from-file")
+    args = [vlc_path, "--one-instance", url,
+            f"--meta-title={title}", "--no-video-title-show"]
     subprocess.Popen(args, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
 
 
