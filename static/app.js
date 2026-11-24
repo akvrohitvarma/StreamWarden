@@ -794,6 +794,13 @@ async function loadSettings() {
       <button class="btn btn-dim" onclick="loadSettings()">Reset</button>
     </div>
 
+    <div class="section-title">Configuration File</div>
+    <div class="hint" style="margin-top:4px;line-height:1.5">Location of the config file on disk. Change this to store your config in a custom directory (e.g. a synced folder).</div>
+    <div class="folder-row" style="margin-top:6px">
+      <input id="config-path-display" value="" readonly style="font-size:11px;color:var(--dim)">
+      <button class="btn btn-dim" onclick="changeConfigPath()">Change</button>
+    </div>
+
     <div class="section-title">Configuration Transfer</div>
     <div class="hint" style="margin-top:4px;line-height:1.5">Export your settings to share with others or back up between devices. Import a previously exported config file to restore settings.</div>
     <div class="config-io">
@@ -802,6 +809,9 @@ async function loadSettings() {
       <input type="file" id="import-file" accept=".json" onchange="importConfig(this)">
     </div>
   `;
+
+  const cpRes = await api('/api/config_path');
+  if (cpRes.ok) $('#config-path-display').value = cpRes.path;
 }
 
 async function pickFolder() {
@@ -873,6 +883,21 @@ function importConfig(input) {
     input.value = '';
   };
   reader.readAsText(file);
+}
+
+async function changeConfigPath() {
+  const r = await post('/api/pick_folder', {});
+  if (!r.ok || !r.path) return;
+  const res = await post('/api/config_path', {path: r.path});
+  if (res.ok) {
+    $('#config-path-display').value = res.path;
+    $('#settings-status').textContent = 'Config moved to ' + res.path;
+    $('#settings-status').style.color = 'var(--success)';
+    await loadSettings();
+  } else {
+    $('#settings-status').textContent = 'Failed: ' + (res.error || 'unknown error');
+    $('#settings-status').style.color = 'var(--err)';
+  }
 }
 
 async function detectDefault(field) {

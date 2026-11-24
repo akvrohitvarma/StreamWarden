@@ -17,6 +17,7 @@ from flask import Flask, jsonify, request as req, send_from_directory
 
 from client import (
     StalkerClient, load_config, save_config, DEFAULT_CONFIG, DOWNLOAD_DIR,
+    get_config_path, set_config_path,
 )
 
 LOG = logging.getLogger("streamwarden")
@@ -649,6 +650,27 @@ def api_config_set():
     client = None
     profile_data = None
     return jsonify({"ok": True})
+
+
+@app.route("/api/config_path")
+def api_config_path():
+    return jsonify({"ok": True, "path": str(get_config_path())})
+
+
+@app.route("/api/config_path", methods=["POST"])
+def api_config_path_set():
+    global config, client, profile_data
+    new_dir = req.json.get("path", "")
+    if not new_dir:
+        return jsonify({"ok": False, "error": "No path provided"})
+    try:
+        set_config_path(new_dir)
+        config = load_config()
+        client = None
+        profile_data = None
+        return jsonify({"ok": True, "path": str(get_config_path())})
+    except Exception as e:
+        return jsonify({"ok": False, "error": str(e)})
 
 
 @app.route("/api/detect_defaults", methods=["POST"])

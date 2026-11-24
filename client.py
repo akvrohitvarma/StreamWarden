@@ -9,9 +9,39 @@ from pathlib import Path
 
 import requests
 
-CONFIG_DIR = Path.home() / ".streamwarden"
-CONFIG_FILE = CONFIG_DIR / "config.json"
+APP_DIR = Path(__file__).resolve().parent
+_CONFIG_PATH_FILE = APP_DIR / ".streamwarden_path"
 DOWNLOAD_DIR = Path.home() / "Downloads" / "StreamWarden"
+
+
+def _resolve_config_file():
+    if _CONFIG_PATH_FILE.exists():
+        try:
+            stored = _CONFIG_PATH_FILE.read_text().strip()
+            if stored:
+                p = Path(stored)
+                if p.is_dir():
+                    return p / "config.json"
+                return p
+        except (IOError, OSError):
+            pass
+    return APP_DIR / "config.json"
+
+
+def get_config_path():
+    return _resolve_config_file()
+
+
+def set_config_path(new_dir):
+    old_file = _resolve_config_file()
+    new_file = Path(new_dir) / "config.json"
+    Path(new_dir).mkdir(parents=True, exist_ok=True)
+    if old_file.exists() and old_file != new_file:
+        import shutil
+        shutil.copy2(str(old_file), str(new_file))
+        old_file.unlink()
+    _CONFIG_PATH_FILE.write_text(str(new_file))
+    return new_file
 
 DEFAULT_CONFIG = {
     "portal_url": "",
@@ -46,10 +76,11 @@ def _detect_vlc():
 
 
 def load_config():
-    CONFIG_DIR.mkdir(parents=True, exist_ok=True)
-    if CONFIG_FILE.exists():
+    cfg_file = _resolve_config_file()
+    cfg_file.parent.mkdir(parents=True, exist_ok=True)
+    if cfg_file.exists():
         try:
-            with open(CONFIG_FILE) as f:
+            with open(cfg_file) as f:
                 cfg = {**DEFAULT_CONFIG, **json.load(f)}
                 if not cfg.get("vlc_path"):
                     cfg["vlc_path"] = _detect_vlc()
@@ -62,8 +93,9 @@ def load_config():
 
 
 def save_config(cfg):
-    CONFIG_DIR.mkdir(parents=True, exist_ok=True)
-    with open(CONFIG_FILE, "w") as f:
+    cfg_file = _resolve_config_file()
+    cfg_file.parent.mkdir(parents=True, exist_ok=True)
+    with open(cfg_file, "w") as f:
         json.dump(cfg, f, indent=2)
 
 
