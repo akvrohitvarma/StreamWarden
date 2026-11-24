@@ -651,6 +651,16 @@ def api_config_set():
     return jsonify({"ok": True})
 
 
+@app.route("/api/detect_defaults", methods=["POST"])
+def api_detect_defaults():
+    from client import _detect_vlc, DOWNLOAD_DIR
+    return jsonify({
+        "ok": True,
+        "vlc_path": _detect_vlc(),
+        "download_dir": str(DOWNLOAD_DIR),
+    })
+
+
 @app.route("/api/pick_folder", methods=["POST"])
 def api_pick_folder():
     try:

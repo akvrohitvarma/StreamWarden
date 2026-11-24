@@ -762,6 +762,7 @@ async function loadSettings() {
     <div class="folder-row">
       <input id="set-download_dir" value="${esc(c.download_dir || '')}" readonly>
       <button class="btn btn-accent" onclick="pickFolder()">Browse...</button>
+      <button class="btn btn-dim" onclick="detectDefault('download_dir')">Auto-detect</button>
     </div>
   `;
 
@@ -782,8 +783,11 @@ async function loadSettings() {
     <select id="set-encoder">${encOpts}</select>
 
     <label>VLC Path</label>
-    <div class="hint">Leave blank for auto-detection</div>
-    <input id="set-vlc_path" value="${esc(c.vlc_path || '')}" placeholder="Auto-detect">
+    <div class="hint">Path to VLC media player executable</div>
+    <div class="folder-row">
+      <input id="set-vlc_path" value="${esc(c.vlc_path || '')}" placeholder="Not detected">
+      <button class="btn btn-dim" onclick="detectDefault('vlc_path')">Auto-detect</button>
+    </div>
 
     <div class="btns">
       <button class="btn btn-accent" onclick="saveSettings()">Save & Reconnect</button>
@@ -850,8 +854,13 @@ function importConfig(input) {
     try {
       const cfg = JSON.parse(e.target.result);
       if (typeof cfg !== 'object' || Array.isArray(cfg)) throw new Error('Invalid config');
+      const defaults = await post('/api/detect_defaults', {});
+      if (defaults.ok) {
+        cfg.vlc_path = defaults.vlc_path;
+        cfg.download_dir = defaults.download_dir;
+      }
       await post('/api/config', cfg);
-      $('#settings-status').textContent = 'Config imported. Reconnecting...';
+      $('#settings-status').textContent = 'Config imported. VLC & download path set for this OS. Reconnecting...';
       $('#settings-status').style.color = 'var(--warn)';
       await loadSettings();
       await connect();
@@ -864,6 +873,18 @@ function importConfig(input) {
     input.value = '';
   };
   reader.readAsText(file);
+}
+
+async function detectDefault(field) {
+  const r = await post('/api/detect_defaults', {});
+  if (!r.ok) return;
+  const val = r[field] || '';
+  const el = $(`#set-${field}`);
+  if (el) {
+    el.value = val;
+    $('#settings-status').textContent = val ? `Detected: ${val}` : `Could not auto-detect ${field.replace('_', ' ')}`;
+    $('#settings-status').style.color = val ? 'var(--success)' : 'var(--warn)';
+  }
 }
 
 function esc(s) { const d = document.createElement('div'); d.textContent = s || ''; return d.innerHTML; }
