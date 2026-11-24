@@ -82,13 +82,16 @@ def load_config():
         try:
             with open(cfg_file) as f:
                 cfg = {**DEFAULT_CONFIG, **json.load(f)}
-                if not cfg.get("vlc_path"):
-                    cfg["vlc_path"] = _detect_vlc()
-                return cfg
         except (json.JSONDecodeError, IOError):
-            pass
-    cfg = dict(DEFAULT_CONFIG)
-    cfg["vlc_path"] = _detect_vlc()
+            cfg = dict(DEFAULT_CONFIG)
+    else:
+        cfg = dict(DEFAULT_CONFIG)
+    vlc = cfg.get("vlc_path", "")
+    if not vlc or not Path(vlc).exists():
+        cfg["vlc_path"] = _detect_vlc()
+    dl = cfg.get("download_dir", "")
+    if not dl or not Path(dl).parent.exists():
+        cfg["download_dir"] = str(DOWNLOAD_DIR)
     return cfg
 
 
