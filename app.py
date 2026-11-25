@@ -195,8 +195,12 @@ def api_episode_files(mid, sid, eid):
         name = ""
         if files:
             f = files[0]
-            url = f.get("cmd", "")
             name = f.get("name", "")
+            fid = f.get("id", "")
+            if fid:
+                url = _clean_cmd_url(get_client().create_link(fid))
+            if not url:
+                url = _clean_cmd_url(f.get("cmd", ""))
         return jsonify({"ok": True, "url": url, "name": name, "files": files})
     except Exception as e:
         return jsonify({"ok": False, "error": str(e)})
@@ -205,7 +209,7 @@ def api_episode_files(mid, sid, eid):
 @app.route("/api/stream/<fid>")
 def api_stream(fid):
     try:
-        url = get_client().create_link(fid)
+        url = _clean_cmd_url(get_client().create_link(fid))
         return jsonify({"ok": True, "url": url})
     except Exception as e:
         return jsonify({"ok": False, "error": str(e)})
@@ -319,6 +323,14 @@ def api_tv():
         return jsonify({"ok": False, "error": str(e)})
 
 
+def _clean_cmd_url(cmd):
+    if not cmd:
+        return ""
+    if "http" in cmd and not cmd.startswith("http"):
+        cmd = cmd[cmd.index("http"):]
+    return cmd.strip()
+
+
 def _vlc_play(vlc_path, url, title="Stream"):
     if platform.system() == "Darwin":
         subprocess.Popen([vlc_path, url, f"--meta-title={title}", "--no-video-title-show"],
@@ -334,7 +346,7 @@ def api_tv_play():
     cmd = req.json.get("cmd", "")
     name = req.json.get("name", "Channel")
     try:
-        url = get_client().tv_link(cmd)
+        url = _clean_cmd_url(get_client().tv_link(cmd))
         if not url:
             return jsonify({"ok": False, "error": "No stream URL"})
         vlc = config.get("vlc_path", "")
