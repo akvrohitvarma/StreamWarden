@@ -10,6 +10,7 @@ let detailNativeFormat = 'mp4';
 let detailQuality = 'best';
 let detailMovieName = '';
 let detailMovieId = '';
+let detailFid = '';
 let dlPollTimer = null;
 
 async function api(url, opts) {
@@ -196,11 +197,11 @@ async function showDetail(mid, cardEl) {
     return;
   }
 
-  const fid = firstItem.id;
+  detailFid = firstItem.id;
   const quality = firstItem.name || '';
   $('#det-status').textContent = quality ? `Quality: ${quality} — Getting URL...` : 'Getting URL...';
 
-  const sr = await api(`/api/stream/${fid}`);
+  const sr = await api(`/api/stream/${detailFid}`);
   if (!sr.ok || !sr.url) {
     $('#det-status').textContent = 'Failed to get stream.';
     $('#det-status').style.color = 'var(--err)';
@@ -525,21 +526,37 @@ function getSelectedSubtitles() {
   return Array.from(cbs).map(cb => cb.value);
 }
 
+async function getFreshUrl() {
+  if (!detailFid) return detailStreamUrl;
+  const sr = await api(`/api/stream/${detailFid}`);
+  if (sr.ok && sr.url) {
+    detailStreamUrl = sr.url;
+    return sr.url;
+  }
+  return detailStreamUrl;
+}
+
 async function playStream(name) {
-  if (!detailStreamUrl) return;
+  if (!detailFid && !detailStreamUrl) return;
+  $('#det-status').textContent = 'Getting fresh URL...'; $('#det-status').style.color = 'var(--warn)';
+  const url = await getFreshUrl();
+  if (!url) { $('#det-status').textContent = 'Failed to get stream.'; $('#det-status').style.color = 'var(--err)'; return; }
   $('#det-status').textContent = 'Opening VLC...'; $('#det-status').style.color = 'var(--warn)';
-  const r = await post('/api/play', {url: detailStreamUrl, name});
+  const r = await post('/api/play', {url, name});
   if (r.player === 'vlc') { $('#det-status').textContent = 'VLC launched.'; $('#det-status').style.color = 'var(--success)'; }
   else { $('#det-status').textContent = 'VLC not found. Copy the URL and open manually.'; $('#det-status').style.color = 'var(--err)'; }
 }
 
 async function downloadStream(name) {
-  if (!detailStreamUrl) return;
+  if (!detailFid && !detailStreamUrl) return;
   const fmt = detailFormat || 'mp4';
   const ext = fmt === 'mp4-compat' ? 'MP4' : fmt.toUpperCase();
+  $('#det-status').textContent = `Getting fresh URL...`; $('#det-status').style.color = 'var(--warn)';
+  const url = await getFreshUrl();
+  if (!url) { $('#det-status').textContent = 'Failed to get stream.'; $('#det-status').style.color = 'var(--err)'; return; }
   $('#det-status').textContent = `Starting .${ext} download...`; $('#det-status').style.color = 'var(--warn)';
   const selectedSubs = getSelectedSubtitles();
-  const r = await post('/api/download', {url: detailStreamUrl, name, format: fmt, quality: detailQuality, subtitles: selectedSubs});
+  const r = await post('/api/download', {url, name, format: fmt, quality: detailQuality, subtitles: selectedSubs});
   if (r.ok) {
     $('#det-status').textContent = 'Download started — check Downloads page.';
     $('#det-status').style.color = 'var(--success)';
@@ -550,9 +567,10 @@ async function downloadStream(name) {
   }
 }
 
-function copyUrl() {
-  if (!detailStreamUrl) return;
-  navigator.clipboard.writeText(detailStreamUrl);
+async function copyUrl() {
+  if (!detailFid && !detailStreamUrl) return;
+  const url = await getFreshUrl();
+  if (url) navigator.clipboard.writeText(url);
   $('#det-status').textContent = 'Copied to clipboard.'; $('#det-status').style.color = 'var(--success)';
 }
 
